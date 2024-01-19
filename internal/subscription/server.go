@@ -190,6 +190,7 @@ func (s *Server) createSubscription(c TwitchClient, subscriptionType string, ver
 			Secret:   s.twitchWebhookSecret,
 		},
 	})
+	fmt.Printf(">> Creating webhook with secret: '%s'\n", s.twitchWebhookSecret)
 	if err != nil {
 		return err
 	}

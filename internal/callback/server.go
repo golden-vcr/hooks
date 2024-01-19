@@ -3,7 +3,11 @@ package callback
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -23,6 +27,17 @@ type Server struct {
 func NewServer(twitchWebhookSecret string) *Server {
 	return &Server{
 		verifyNotification: func(header http.Header, message string) bool {
+			hmacMessage := []byte(fmt.Sprintf("%s%s%s", header.Get("Twitch-Eventsub-Message-Id"), header.Get("Twitch-Eventsub-Message-Timestamp"), message))
+			mac := hmac.New(sha256.New, []byte(twitchWebhookSecret))
+			mac.Write(hmacMessage)
+			hmacsha256 := fmt.Sprintf("sha256=%s", hex.EncodeToString(mac.Sum(nil)))
+			fmt.Printf("|| Verifying EventSub notification...\n")
+			fmt.Printf("|| -        Twitch-Eventsub-Message-Id: %s\n", header.Get("Twitch-Eventsub-Message-Id"))
+			fmt.Printf("|| - Twitch-Eventsub-Message-Timestamp: %s\n", header.Get("Twitch-Eventsub-Message-Timestamp"))
+			fmt.Printf("|| -                           message: '%s'\n", string(message))
+			fmt.Printf("|| -                            secret: '%s'\n", twitchWebhookSecret)
+			fmt.Printf("|| -                          computed: %s\n", hmacsha256)
+			fmt.Printf("|| - Twitch-Eventsub-Message-Signature: %s\n", header.Get("Twitch-Eventsub-Message-Signature"))
 			return helix.VerifyEventSubNotification(twitchWebhookSecret, header, message)
 		},
 		handleEvent: func(ctx context.Context, subscription *helix.EventSubSubscription, data json.RawMessage) error {
@@ -48,22 +63,11 @@ func (s *Server) handlePostCallback(res http.ResponseWriter, req *http.Request) 
 	}
 	defer req.Body.Close()
 
-	// Our tracing middleware adds an X-Request-Id header to the incoming request: this
-	// header isn't part of the request generated on Twitch's end, so we need to remove
-	// it while verifying the signature computed from that request
-	requestId := req.Header.Get("x-request-id")
-	req.Header.Del("x-request-id")
-
 	// Verify that this event comes from Twitch: abort if phony
 	if !s.verifyNotification(req.Header, string(body)) {
 		logger.Error("Failed to verify signature")
 		http.Error(res, "Signature verification failed", http.StatusBadRequest)
 		return
-	}
-
-	// Restore the original request ID just in case we want it around
-	if requestId != "" {
-		req.Header.Set("x-request-id", requestId)
 	}
 
 	// Decode the payload from JSON so we can examine the details of the event

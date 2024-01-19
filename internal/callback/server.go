@@ -48,11 +48,22 @@ func (s *Server) handlePostCallback(res http.ResponseWriter, req *http.Request) 
 	}
 	defer req.Body.Close()
 
+	// Our tracing middleware adds an X-Request-Id header to the incoming request: this
+	// header isn't part of the request generated on Twitch's end, so we need to remove
+	// it while verifying the signature computed from that request
+	requestId := req.Header.Get("x-request-id")
+	req.Header.Del("x-request-id")
+
 	// Verify that this event comes from Twitch: abort if phony
 	if !s.verifyNotification(req.Header, string(body)) {
 		logger.Error("Failed to verify signature")
 		http.Error(res, "Signature verification failed", http.StatusBadRequest)
 		return
+	}
+
+	// Restore the original request ID just in case we want it around
+	if requestId != "" {
+		req.Header.Set("x-request-id", requestId)
 	}
 
 	// Decode the payload from JSON so we can examine the details of the event

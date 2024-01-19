@@ -3,11 +3,7 @@ package callback
 import (
 	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -27,17 +23,6 @@ type Server struct {
 func NewServer(twitchWebhookSecret string) *Server {
 	return &Server{
 		verifyNotification: func(header http.Header, message string) bool {
-			hmacMessage := []byte(fmt.Sprintf("%s%s%s", header.Get("Twitch-Eventsub-Message-Id"), header.Get("Twitch-Eventsub-Message-Timestamp"), message))
-			mac := hmac.New(sha256.New, []byte(twitchWebhookSecret))
-			mac.Write(hmacMessage)
-			hmacsha256 := fmt.Sprintf("sha256=%s", hex.EncodeToString(mac.Sum(nil)))
-			fmt.Printf("|| Verifying EventSub notification...\n")
-			fmt.Printf("|| -        Twitch-Eventsub-Message-Id: %s\n", header.Get("Twitch-Eventsub-Message-Id"))
-			fmt.Printf("|| - Twitch-Eventsub-Message-Timestamp: %s\n", header.Get("Twitch-Eventsub-Message-Timestamp"))
-			fmt.Printf("|| -                           message: '%s'\n", string(message))
-			fmt.Printf("|| -                            secret: '%s'\n", twitchWebhookSecret)
-			fmt.Printf("|| -                          computed: %s\n", hmacsha256)
-			fmt.Printf("|| - Twitch-Eventsub-Message-Signature: %s\n", header.Get("Twitch-Eventsub-Message-Signature"))
 			return helix.VerifyEventSubNotification(twitchWebhookSecret, header, message)
 		},
 		handleEvent: func(ctx context.Context, subscription *helix.EventSubSubscription, data json.RawMessage) error {

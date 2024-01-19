@@ -82,7 +82,7 @@ func main() {
 		channelUserId,
 		config.TwitchClientId,
 		config.TwitchClientSecret,
-		config.TwitchClientSecret,
+		config.TwitchWebhookSecret,
 	)
 	subscriptionServer.RegisterRoutes(authClient, r)
 

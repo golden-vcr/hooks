@@ -1,0 +1,238 @@
+openapi: 3.0.3
+info:
+  version: 0.1.0
+  title: hooks
+  description: |
+    The **hooks** service is responsible for managing Twitch EventSub subscriptions,
+    allowing the Golden VCR backend to be notified via webhook callbacks when relevant
+    events occur on Twitch.
+
+    See the [Twitch docs](https://dev.twitch.tv/docs/eventsub/) for more details on the
+    EventSub API.
+externalDocs:
+  description: 'github.com/golden-vcr/hooks'
+  url: https://github.com/golden-vcr/hooks
+servers:
+  - url: https://goldenvcr.com/api/hooks
+tags:
+  - name: callback
+    description: |-
+      Webhooks called by Twitch in response to relevant events
+  - name: subscription
+    description: |-
+      Admin-only API used to monitor and manage EventSub subscriptions
+  - name: userauth
+    description: |-
+      Initiates and completes an OAuth flow to permit access to Twitch user account
+paths:
+  /callback:
+    post:
+      tags:
+        - callback
+      summary: |-
+        Called by Twitch to initialize an EventSub subscription or notify us of an event
+        we're subscribed to
+      operationId: postCallback
+      requestBody:
+        content:
+          application/json:
+            examples:
+              onregister:
+                summary: Initial challenge when subscription is first registered
+                value:
+                  subscription:
+                    id: '00000000-0000-0000-0000-000000000000'
+                    type: channel.follow
+                    version: '2'
+                    status: enabled
+                    condition:
+                      broadcaster_user_id: '953753877'
+                      moderator_user_id: '953753877'
+                    transport:
+                      method: webhook
+                      example: https://goldenvcr.com/api/hooks/callback
+                    created_at: '2023-01-01T12:15:00.77777777Z'
+                    cost: 0
+                  challenge: '9zMXrpRAtLsfCqcUxcgH2bdtCNirhr9X'
+              onevent:
+                summary: Event notification for an active subscription
+                value:
+                  subscription:
+                    id: '00000000-0000-0000-0000-000000000000'
+                    type: channel.follow
+                    version: '2'
+                    status: enabled
+                    condition:
+                      broadcaster_user_id: '953753877'
+                      moderator_user_id: '953753877'
+                    transport:
+                      method: webhook
+                      example: https://goldenvcr.com/api/hooks/callback
+                    created_at: '2023-01-01T12:15:00.77777777Z'
+                    cost: 0
+                  event:
+                    user_id: '90790024'
+                    user_login: wasabimilkshake
+                    user_name: wasabimilkshake
+                    broadcaster_user_id: '953753877'
+                    broadcaster_user_login: goldenvcr
+                    broadcaster_user_name: GoldenVCR
+                    followed_at: '2023-09-27T19:23:05.84782554Z'
+        required: true
+      responses:
+        '200':
+          description: |-
+            The event was accepted. For an initial challenge on register, the response
+            body will contain the literal `challenge` value from the request payload;
+            otherwise no content.
+        '400':
+          description: |-
+            Signature verification failed: the server could not verify that the request
+            was initiated by Twitch.
+  /subscriptions:
+    get:
+      tags:
+        - subscription
+      summary: |-
+        Provides an admin with the current status of all required EventSub subscriptions
+      security:
+        - twitchUserAccessToken: []
+      operationId: getSubscriptions
+      responses:
+        '200':
+          description: |-
+            Success; response body lists all required subscriptions and their status,
+            along with any superfluous subscriptions registered to the hooks service's
+            webhook callback URL.
+          content:
+            application/json:
+              examples:
+                allOk:
+                  summary: All required subscriptions are enabled
+                  value:
+                    ok: true
+                    subscriptions:
+                      - required: true
+                        type: stream.online
+                        version: '1'
+                        condition:
+                          broadcaster_user_id: '953753877'
+                        status: enabled
+                      - required: true
+                        type: channel.follow
+                        version: '2'
+                        condition:
+                          broadcaster_user_id: '953753877'
+                          moderator_user_id: '953753877'
+                        status: enabled
+                notOk:
+                  summary: Some subscriptions need to be (re)created, one is superfluous
+                  value:
+                    ok: false
+                    subscriptions:
+                      - required: true
+                        type: stream.online
+                        version: '1'
+                        condition:
+                          broadcaster_user_id: '953753877'
+                        status: webhook_callback_verification_failed
+                      - required: true
+                        type: channel.follow
+                        version: '2'
+                        condition:
+                          broadcaster_user_id: '953753877'
+                          moderator_user_id: '953753877'
+                        status: missing
+                      - required: false
+                        type: stream.offline
+                        version: '1'
+                        condition:
+                          broadcaster_user_id: '953753877'
+                        status: enabled
+        '401':
+          description: |-
+            Authentication failed; caller's identity could not be ascertained.
+        '403':
+          description: |-
+            Authorization failed; caller is not the broadcaster.
+    patch:
+      tags:
+        - subscription
+      summary: |-
+        Allows an admin to create any required subscriptions that are missing
+      security:
+        - twitchUserAccessToken: []
+      operationId: patchSubscriptions
+      responses:
+        '204':
+          description: |-
+            Success; 0 or more required subscriptions which were previously listed as
+            'missing' have now been created via the Twitch API. (Any existing
+            subscriptions in any other state have not been modified; they must be
+            deleted first in order to be recreated.)
+        '401':
+          description: |-
+            Authentication failed; caller's identity could not be ascertained.
+        '403':
+          description: |-
+            Authorization failed; caller is not the broadcaster.
+        '500':
+          description: |-
+            The server encountered an error while attempting to create subscriptions.
+    delete:
+      tags:
+        - subscription
+      summary: |-
+        Allows an admin to delete all existing subscriptions
+      security:
+        - twitchUserAccessToken: []
+      operationId: deleteSubscriptions
+      responses:
+        '204':
+          description: |-
+            Success; 0 or more existing subscriptions have now been deleted via the
+            Twitch API. (Only subscriptions that target this service's callback URL and
+            configured channel are affected.)
+        '401':
+          description: |-
+            Authentication failed; caller's identity could not be ascertained.
+        '403':
+          description: |-
+            Authorization failed; caller is not the broadcaster.
+        '500':
+          description: |-
+            The server encountered an error while attempting to delete subscriptions.
+  /userauth/start:
+    get:
+      tags:
+        - userauth
+      summary: |-
+        Initiates an OAuth flow to grant our app access to the logged-in Twitch user's
+        channel, with the appropriate set of scopes for the set of required EventSub
+        subscriptions
+      operationId: startAuth
+      responses:
+        '303':
+          description: |-
+            `Location` header indicates the URL (on `id.twitch.tv`) that the user should
+            be taken to in order to connect the app to their account with the requisite
+            scopes.
+  /userauth/finish:
+    get:
+      tags:
+        - userauth
+      summary: |-
+        Completes an OAuth authorization code grant flow, verifying that access has been
+        granted.
+      responses:
+        '200':
+          description: |-
+            Access was granted; renders a simple user-facing HTML success message.
+        '400':
+          description: |-
+            Code grant flow was not completed successfully.
+components:
+  securitySchemes:
+    twitchUserAccessToken:
+      type: http
+      scheme: bearer

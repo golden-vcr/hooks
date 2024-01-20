@@ -4,6 +4,8 @@ The **hooks** application is an HTTP server that handles EventSub webhook callba
 Twitch, allowing our backend to respond to events that occur on Twitch, such as the
 channel status changing, a viewer following or subscribing, etc.
 
+- **OpenAPI specification:** https://golden-vcr.github.io/showtime/
+
 When the **hooks** server receives a valid callback from Twitch, it generates an
 internal event and pushes it onto a queue. Further downstream in the backend, other
 applications consume those events in order to record and respond to state changes

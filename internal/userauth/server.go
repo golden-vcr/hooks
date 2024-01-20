@@ -86,4 +86,7 @@ func (s *Server) handleFinishAuth(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
+
+	res.Header().Set("Content-Type", "text/html; charset=utf-8")
+	res.Write([]byte("<!DOCTYPE html><html><head><title>OK</title></head><body><h1>Success!</h1><p>Access granted. You may close this window.</p></body></html>"))
 }

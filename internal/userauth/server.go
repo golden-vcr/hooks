@@ -18,6 +18,10 @@ type Server struct {
 }
 
 func NewServer(origin, twitchClientId string) *Server {
+	// NOTE: csrfBuffer stores CSRF tokens in-memory for validation across requests;
+	// this means that the userauth functionality (which is only used when the set of
+	// required OAuth scopes for our desired set of subscription types changes) only
+	// supports being run with a single replica
 	return &Server{
 		origin:                origin,
 		twitchClientId:        twitchClientId,

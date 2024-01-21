@@ -5,10 +5,11 @@ go 1.21.3
 require (
 	github.com/codingconcepts/env v0.0.0-20200821220118-a8fbf8d84482
 	github.com/golden-vcr/auth v0.3.0
-	github.com/golden-vcr/server-common v0.6.0
+	github.com/golden-vcr/server-common v0.8.0
 	github.com/gorilla/mux v1.8.1
 	github.com/joho/godotenv v1.5.1
 	github.com/nicklaw5/helix/v2 v2.25.3
+	github.com/rabbitmq/amqp091-go v1.9.0
 	github.com/stretchr/testify v1.8.4
 )
 

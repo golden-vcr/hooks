@@ -28,6 +28,10 @@ variables required in [`main.go`](./cmd/server/main.go). If you have the
 simply open a shell there and run:
 
 - `terraform output -raw twitch_api_env > ../hooks/.env`
+- `./local-rmq.sh env >> ../hooks/.env`
+
+The hooks server depends on RabbitMQ: you can start up a local RabbitMQ server for
+development (in a docker container) by running `./local-rmq.sh up`.
 
 ## Registering EventSub subscriptions
 

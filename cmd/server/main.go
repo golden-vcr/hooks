@@ -7,12 +7,14 @@ import (
 	"github.com/codingconcepts/env"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	amqp "github.com/rabbitmq/amqp091-go"
 
 	"github.com/golden-vcr/auth"
 	"github.com/golden-vcr/hooks/internal/callback"
 	"github.com/golden-vcr/hooks/internal/subscription"
 	"github.com/golden-vcr/hooks/internal/userauth"
 	"github.com/golden-vcr/server-common/entry"
+	"github.com/golden-vcr/server-common/rmq"
 	"github.com/golden-vcr/server-common/twitch"
 )
 
@@ -25,6 +27,13 @@ type Config struct {
 	TwitchClientId      string `env:"TWITCH_CLIENT_ID" required:"true"`
 	TwitchClientSecret  string `env:"TWITCH_CLIENT_SECRET" required:"true"`
 	TwitchWebhookSecret string `env:"TWITCH_WEBHOOK_SECRET" required:"true"`
+
+	RmqHost     string `env:"RMQ_HOST" required:"true"`
+	RmqPort     int    `env:"RMQ_PORT" required:"true"`
+	RmqVhost    string `env:"RMQ_VHOST" required:"true"`
+	RmqUser     string `env:"RMQ_USER" required:"true"`
+	RmqPassword string `env:"RMQ_PASSWORD" required:"true"`
+	RmqExchange string `env:"RMQ_EXCHANGE" default:"twitch-events"`
 
 	AuthURL string `env:"AUTH_URL" default:"http://localhost:5002"`
 }
@@ -41,6 +50,21 @@ func main() {
 	config := Config{}
 	if err := env.Set(&config); err != nil {
 		app.Fail("Failed to load config", err)
+	}
+
+	// Initialize an AMQP client
+	amqpConn, err := amqp.Dial(rmq.FormatConnectionString(config.RmqHost, config.RmqPort, config.RmqVhost, config.RmqUser, config.RmqPassword))
+	if err != nil {
+		app.Fail("Failed to connect to AMQP server", err)
+	}
+	producer, err := rmq.NewProducer(amqpConn, config.RmqExchange)
+	if err != nil {
+		app.Fail("Failed to initialize AMQP producer", err)
+	}
+
+	// TEMP: Send a test message to the queue on startup
+	if err := producer.Send(app.Context(), []byte(`{"test":true}`)); err != nil {
+		app.Fail("Failed to send test message", err)
 	}
 
 	// Initialize an auth client so we can require broadcaster-level access in order to

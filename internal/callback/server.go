@@ -7,27 +7,38 @@ import (
 	"io"
 	"net/http"
 
+	etwitch "github.com/golden-vcr/schemas/twitch-events"
 	"github.com/golden-vcr/server-common/entry"
+	"github.com/golden-vcr/server-common/rmq"
 	"github.com/gorilla/mux"
 	"github.com/nicklaw5/helix/v2"
+	"golang.org/x/exp/slog"
 )
 
 type VerifyNotificationFunc func(header http.Header, message string) bool
-type HandleEventFunc func(ctx context.Context, subscription *helix.EventSubSubscription, data json.RawMessage) error
+type HandleEventFunc func(ctx context.Context, logger *slog.Logger, subscription *helix.EventSubSubscription, data json.RawMessage) error
 
 type Server struct {
 	verifyNotification VerifyNotificationFunc
 	handleEvent        HandleEventFunc
 }
 
-func NewServer(twitchWebhookSecret string) *Server {
+func NewServer(twitchWebhookSecret string, producer rmq.Producer) *Server {
 	return &Server{
 		verifyNotification: func(header http.Header, message string) bool {
 			return helix.VerifyEventSubNotification(twitchWebhookSecret, header, message)
 		},
-		handleEvent: func(ctx context.Context, subscription *helix.EventSubSubscription, data json.RawMessage) error {
-			// TODO: Something
-			return nil
+		handleEvent: func(ctx context.Context, logger *slog.Logger, subscription *helix.EventSubSubscription, data json.RawMessage) error {
+			ev, err := etwitch.FromEventSub(subscription, data)
+			if err != nil {
+				return err
+			}
+			jsonData, err := json.Marshal(ev)
+			if err != nil {
+				return err
+			}
+			logger.Info("Producing to twitch-events", "twitchEvent", ev)
+			return producer.Send(ctx, jsonData)
 		},
 	}
 }
@@ -87,7 +98,7 @@ func (s *Server) handlePostCallback(res http.ResponseWriter, req *http.Request) 
 		"subscriptionVersion", payload.Subscription.Version,
 		"event", string(payload.Event),
 	)
-	if err := s.handleEvent(req.Context(), &payload.Subscription, payload.Event); err != nil {
+	if err := s.handleEvent(req.Context(), logger, &payload.Subscription, payload.Event); err != nil {
 		logger.Error("Failed to handle event", "error", err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

@@ -11,6 +11,7 @@ import (
 
 	"github.com/nicklaw5/helix/v2"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slog"
 )
 
 func Test_Server_handlePostCallback(t *testing.T) {
@@ -54,7 +55,8 @@ func Test_Server_handlePostCallback(t *testing.T) {
 				verifyNotification: func(header http.Header, message string) bool {
 					return tt.signatureIsOK
 				},
-				handleEvent: func(ctx context.Context, subscription *helix.EventSubSubscription, data json.RawMessage) error {
+				handleEvent: func(ctx context.Context, logger *slog.Logger, subscription *helix.EventSubSubscription, data json.RawMessage) error {
+					logger.Debug("Handled event", "data", data)
 					handledEventData = string(data)
 					return nil
 				},

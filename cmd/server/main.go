@@ -62,11 +62,6 @@ func main() {
 		app.Fail("Failed to initialize AMQP producer", err)
 	}
 
-	// TEMP: Send a test message to the queue on startup
-	if err := producer.Send(app.Context(), []byte(`{"test":true}`)); err != nil {
-		app.Fail("Failed to send test message", err)
-	}
-
 	// Initialize an auth client so we can require broadcaster-level access in order to
 	// call the admin-only subscription management endpoints
 	authClient, err := auth.NewClient(app.Context(), config.AuthURL)
@@ -95,7 +90,7 @@ func main() {
 
 	// Twitch will call POST /callback (once we've registered EventSub subscriptions
 	// configuring it to do so) in response to events that occur on Twitch
-	callbackServer := callback.NewServer(config.TwitchWebhookSecret)
+	callbackServer := callback.NewServer(config.TwitchWebhookSecret, producer)
 	callbackServer.RegisterRoutes(r)
 
 	// A client authenticated as the broadcaster can call GET /subscriptions to view the

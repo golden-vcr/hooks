@@ -39,7 +39,7 @@ type Config struct {
 }
 
 func main() {
-	app := entry.NewApplication("hooks")
+	app, ctx := entry.NewApplication("hooks")
 	defer app.Stop()
 
 	// Parse config from environment variables
@@ -64,14 +64,14 @@ func main() {
 
 	// Initialize an auth client so we can require broadcaster-level access in order to
 	// call the admin-only subscription management endpoints
-	authClient, err := auth.NewClient(app.Context(), config.AuthURL)
+	authClient, err := auth.NewClient(ctx, config.AuthURL)
 	if err != nil {
 		app.Fail("Failed to initialize auth client", err)
 	}
 
 	// Initialize a Twitch API client with an app access token, then use it to resolve
 	// the Twitch User ID of our desired channel
-	twitchClient, err := twitch.NewClientWithAppToken(app.Context(), config.TwitchClientId, config.TwitchClientSecret)
+	twitchClient, err := twitch.NewClientWithAppToken(ctx, config.TwitchClientId, config.TwitchClientSecret)
 	if err != nil {
 		app.Fail("Failed to initialize Twitch API client", err)
 	}
@@ -114,5 +114,5 @@ func main() {
 
 	// Handle incoming HTTP connections until our top-level context is canceled, at
 	// which point shut down cleanly
-	entry.RunServer(app, r, config.BindAddr, int(config.ListenPort))
+	entry.RunServer(ctx, app.Log(), r, config.BindAddr, config.ListenPort)
 }

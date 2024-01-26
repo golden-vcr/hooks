@@ -33,7 +33,6 @@ type Config struct {
 	RmqVhost    string `env:"RMQ_VHOST" required:"true"`
 	RmqUser     string `env:"RMQ_USER" required:"true"`
 	RmqPassword string `env:"RMQ_PASSWORD" required:"true"`
-	RmqExchange string `env:"RMQ_EXCHANGE" default:"twitch-events"`
 
 	AuthURL string `env:"AUTH_URL" default:"http://localhost:5002"`
 }
@@ -57,7 +56,7 @@ func main() {
 	if err != nil {
 		app.Fail("Failed to connect to AMQP server", err)
 	}
-	producer, err := rmq.NewProducer(amqpConn, config.RmqExchange)
+	producer, err := rmq.NewProducer(amqpConn, "twitch-events")
 	if err != nil {
 		app.Fail("Failed to initialize AMQP producer", err)
 	}

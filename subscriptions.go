@@ -29,6 +29,16 @@ var Subscriptions = RequiredSubscriptions{
 		},
 	},
 	{
+		Type:    helix.EventSubTypeHypeTrainBegin,
+		Version: "1",
+		TemplatedCondition: helix.EventSubCondition{
+			BroadcasterUserID: "{{.ChannelUserId}}",
+		},
+		RequiredScopes: []string{
+			"channel:read:hype_train",
+		},
+	},
+	{
 		Type:    helix.EventSubTypeChannelFollow,
 		Version: "2",
 		TemplatedCondition: helix.EventSubCondition{

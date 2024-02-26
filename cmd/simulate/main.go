@@ -50,6 +50,7 @@ type Command struct {
 var commands = []Command{
 	{"online", initOnlineCommnand, runOnlineCommand},
 	{"offline", initOfflineCommand, runOfflineCommand},
+	{"hype", initHypeCommand, runHypeCommand},
 	{"follow", initFollowCommand, runFollowCommand},
 	{"raid", initRaidCommand, runRaidCommand},
 }

@@ -53,6 +53,7 @@ var commands = []Command{
 	{"hype", initHypeCommand, runHypeCommand},
 	{"follow", initFollowCommand, runFollowCommand},
 	{"raid", initRaidCommand, runRaidCommand},
+	{"cheer", initCheerCommand, runCheerCommand},
 }
 
 func main() {
